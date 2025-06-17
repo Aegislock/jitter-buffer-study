@@ -11,7 +11,7 @@ public class JitterBuffer {
     public JitterBuffer(int delayStep) {
         this.packets = new JitterPacket[BUFFER_SIZE];
         this.arrival = new int[BUFFER_SIZE];
-        this.nextStop = 0;
+        this.nextStop = 0; // Need to manually set
         this.pointerTimestamp = 0;
         this.delayStep = delayStep;
         this.lostCount = 0;
