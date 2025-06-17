@@ -15,6 +15,8 @@ public class JitterBuffer {
         this.pointerTimestamp = 0;
         this.delayStep = delayStep;
         this.lostCount = 0;
+        this.buffered = 0;
+        this.interpRequested = 0;
         this.resetState = false;
     }
 
@@ -24,11 +26,14 @@ public class JitterBuffer {
         int i, j;
         // Cleanup (remove old packets that weren't played)
         if (!this.resetState) {
-            for (i = 0; i < packet.len; i++) {
+            for (i = 0; i < this.packets; i++) {
                 // Do nothing if the packet is fully in the past
                 // Don't need to free or destroy in Java
                 if (packet.timestamp + packet.span + this.delayStep < this.pointerTimestamp) {
                     continue;
+                }
+                else {
+                    this.packets[i] = null;
                 }
             }
         }
@@ -68,6 +73,12 @@ public class JitterBuffer {
         }
     }
 
+    // Optional: pull the next usable packet
+    public JitterPacket get() {
+        // TODO: your implementation (optional)
+        return null;
+    }
+
     public JitterPacket[] getPackets() {
         return packets;
     }
@@ -102,12 +113,6 @@ public class JitterBuffer {
 
     public int getLostCount() {
         return lostCount;
-    }
-
-    // Optional: pull the next usable packet
-    public JitterPacket get() {
-        // TODO: your implementation (optional)
-        return null;
     }
 
     // Optional: manually reset the buffer
