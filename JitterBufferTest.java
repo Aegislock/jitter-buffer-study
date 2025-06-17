@@ -37,7 +37,6 @@ public class JitterBufferTest {
         buffer.debugPrint();
     }
 
-
     private static void assertEquals(Object a, Object b, String message) {
         if (!a.equals(b)) throw new AssertionError("FAIL: " + message + " | Expected: " + b + ", Got: " + a);
     }
