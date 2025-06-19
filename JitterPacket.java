@@ -4,15 +4,17 @@ public class JitterPacket {
     public int span;
     public int sequence;
     public int len;
-    public int metaData;
+    public int status;
+    public int userData;
 
-    public JitterPacket(byte[] data, int timestamp, int span, int sequence, int metaData) {
+    public JitterPacket(byte[] data, int timestamp, int span, int sequence, int status, int userData) {
         // constructor body
         this.data = data;
         this.timestamp = timestamp;
         this.span = span;
         this.sequence = sequence;
         this.len = this.data.length;
-        this.metaData = metaData;
+        this.status = status;
+        this.userData = userData;
     }
 }

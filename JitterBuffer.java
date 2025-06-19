@@ -89,7 +89,7 @@ public class JitterBuffer {
             boolean found = false;
             int oldest_timestamp = 0;
             for (int i = 0; i < this.packets.length; i++) {
-                if (this.packets[i].data != null && (!found || this.packets[i].timestamp <= oldest_timestamp)) {
+                if (this.packets[i].data != null && (!found || this.packets[i].timestamp < oldest_timestamp)) {
                     oldest_timestamp = this.packets[i].timestamp;
                     found = true;
                 }
@@ -129,7 +129,6 @@ public class JitterBuffer {
         }
         // Option 2: Older packet that still spans the entire chunk 
         if (i == this.packets.length) {
-            i = 0;
             for (i = 0; i < this.packet.length; i++) {
                 if (this.packets != null && this.packets[i].timestamp <= this.pointerTimestamp
                     && this.packets[i].timestamp + this.packets[i].span >= this.pointerTimestamp + this.delayStep) {
@@ -139,10 +138,16 @@ public class JitterBuffer {
         }
         // Option 3: Older packet that spans PART of the current chunk
         if (i == this.packets.length) {
-            i = 0;
             for (i = 0; i < this.packet.length; i++) {
-
+                if (this.packets != null && this.packets[i].timestamp <= this.pointerTimestamp
+                    && this.packets[i].timestamp + this.packets[i].span > this.pointerTimestamp) {
+                    break;
+                }
             }
+        }
+        // Option 4: Find earliest packet possible
+        if (i == this.packets.length) {
+            for ()
         }
 
         return null;
