@@ -1,5 +1,3 @@
-import Exception;
-
 public class JitterBuffer {
     private static final int BUFFER_SIZE = 10;
     private JitterPacket[] packets;
@@ -79,8 +77,8 @@ public class JitterBuffer {
         }
     }
 
-    // Optional: pull the next usable packet
-    public JitterPacket get(JitterPacket packet) throws Exception {
+    // Pull the next usable packet
+    public void get(JitterPacket packet) throws Exception {
         // TODO: your implementation (optional)
         int i, j, opt;
         int start_offset = 0;
@@ -88,14 +86,14 @@ public class JitterBuffer {
         if (this.resetState) {
             boolean found = false;
             int oldest_timestamp = 0;
-            for (int i = 0; i < this.packets.length; i++) {
+            for (i = 0; i < this.packets.length; i++) {
                 if (this.packets[i].data != null && (!found || this.packets[i].timestamp < oldest_timestamp)) {
                     oldest_timestamp = this.packets[i].timestamp;
                     found = true;
                 }
             }
             if (found) {
-                this.resetState = 0;
+                this.resetState = false;
                 this.pointerTimestamp = oldest_timestamp;
                 this.nextStop = oldest_timestamp;
             }
@@ -122,15 +120,15 @@ public class JitterBuffer {
         // Search for best-fit packet
         // Option 1: Packet with the exact timestamp and spans the entire chunk
         for (i = 0; i < this.packets.length; i++) {
-            if (this.packets[i] != null && this.packets[i].timestamp == this.pointerTimestamp
+            if (this.packets[i] != null && this.packets[i].data != null && this.packets[i].timestamp == this.pointerTimestamp
                 && this.packets[i].timestamp + this.packets[i].span >= this.pointerTimestamp + this.delayStep) {
                 break;
             }
         }
         // Option 2: Older packet that still spans the entire chunk 
         if (i == this.packets.length) {
-            for (i = 0; i < this.packet.length; i++) {
-                if (this.packets != null && this.packets[i].timestamp <= this.pointerTimestamp
+            for (i = 0; i < this.packets.length; i++) {
+                if (this.packets[i] != null && this.packets[i].data != null && this.packets[i].timestamp <= this.pointerTimestamp
                     && this.packets[i].timestamp + this.packets[i].span >= this.pointerTimestamp + this.delayStep) {
                     break;
                 }
@@ -138,19 +136,65 @@ public class JitterBuffer {
         }
         // Option 3: Older packet that spans PART of the current chunk
         if (i == this.packets.length) {
-            for (i = 0; i < this.packet.length; i++) {
-                if (this.packets != null && this.packets[i].timestamp <= this.pointerTimestamp
+            for (i = 0; i < this.packets.length; i++) {
+                if (this.packets[i] != null && this.packets[i].data != null && this.packets[i].timestamp <= this.pointerTimestamp
                     && this.packets[i].timestamp + this.packets[i].span > this.pointerTimestamp) {
                     break;
                 }
             }
         }
-        // Option 4: Find earliest packet possible
+        // Option 4: Find earliest packet possible in the future
         if (i == this.packets.length) {
-            for ()
+            boolean found = false;
+            int best_time = 0;
+            int best_span = 0;
+            int best_index = 0;
+            for (i = 0; i < this.packets.length; i++) {
+                if (this.packets[i] != null && this.packets[i].data != null && this.packets[i].timestamp <= this.pointerTimestamp + this.delayStep
+                    && this.packets[i].timestamp >= this.pointerTimestamp) {
+                    if (!found || 
+                        (this.packets[i].timestamp < best_time) ||
+                        (this.packets[i].timestamp == best_time && this.packets[i].span > best_span)) {
+                        best_time = this.packets[i].timestamp;
+                        best_span = this.packets[i].span;
+                        best_index = i;
+                        found = true;
+                    }
+                }
+            }
+            if (found) {
+                i = best_index;
+            }
         }
 
-        return null;
+        // If we find something
+        if (i != this.packets.length) {
+            int offset;
+            this.lostCount = 0;
+            if (this.arrival[i] != 0) {
+                // update timings (adaptive buffer, don't need to worry about this yet)
+            }
+            packet.data = this.packets[i].data;
+            packet.len = this.packets[i].len;
+            packet.timestamp = this.packets[i].timestamp;
+            this.lastReturnedTimestamp = packet.timestamp;
+            packet.span = this.packets[i].span;
+            packet.sequence = this.packets[i].sequence;
+            packet.userData = this.packets[i].userData;
+            this.pointerTimestamp = this.packets[i].timestamp + this.packets[i].span;
+            this.buffered = packet.span - delayStep;
+            if (start_offset == -1) {
+                this.buffered = start_offset;
+            }
+            packet.status = 0;
+            this.packets[i] = null;
+        }
+        else {
+            this.lostCount++;
+            // opt = compute_opt_delay(this);
+            // opt stuff, for adaptive filter
+        }
+        return;
     }
 
     public JitterPacket[] getPackets() {
@@ -189,10 +233,20 @@ public class JitterBuffer {
         return lostCount;
     }
 
-    // Optional: manually reset the buffer
     public void reset() {
-        // TODO
+        for (int i = 0; i < packets.length; i++) {
+            packets[i] = null;
+            arrival[i] = 0;
+        }
+        this.resetState = true;
+        this.pointerTimestamp = 0;
+        this.nextStop = 0;
+        this.lastReturnedTimestamp = 0;
+        this.lostCount = 0;
+        this.buffered = 0;
+        this.interpRequested = 0;
     }
+
 
     // Debug function to print buffer state
     public void debugPrint() {
