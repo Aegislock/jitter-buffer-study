@@ -4,6 +4,7 @@ public class JitterPacket {
     public int span;
     public int sequence;
     public int len;
+    public int metaData;
 
     public JitterPacket(byte[] data, int timestamp, int span, int sequence, int metaData) {
         // constructor body
@@ -12,6 +13,6 @@ public class JitterPacket {
         this.span = span;
         this.sequence = sequence;
         this.len = this.data.length;
-        this.userData = metaData;
+        this.metaData = metaData;
     }
 }
