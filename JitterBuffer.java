@@ -183,9 +183,9 @@ public class JitterBuffer {
             packet.userData = this.packets[i].userData;
             this.pointerTimestamp = this.packets[i].timestamp + this.packets[i].span;
             this.buffered = packet.span - delayStep;
-            if (start_offset == -1) {
-                this.buffered = start_offset;
-            }
+            //if (start_offset == -1) {
+                //this.buffered = start_offset;
+            //}
             packet.status = 0;
             this.packets[i] = null;
         }
