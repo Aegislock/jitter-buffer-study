@@ -1,170 +1,170 @@
 public class JitterBufferTest {
     public static void main(String[] args) {
-        /*
-        JitterBuffer buffer = new JitterBuffer(5); // delayStep = 5
-        buffer.setNextStop(150);  
-
-        // Case 1: On-time packet
-        System.out.println("Test 1");
-        JitterPacket p1 = new JitterPacket(new byte[]{1, 2}, 100, 20, 1);
-        buffer.put(p1);
-        buffer.debugPrint();
-
-        // Case 2: Slightly late
-        System.out.println("Test 2");
-        buffer.setPointerTimestamp(115);
-        JitterPacket p2 = new JitterPacket(new byte[]{3, 4}, 95, 10, 2);
-        buffer.put(p2);  // expected to be dropped
-        buffer.debugPrint();
-
-        System.out.println("Test 3");
-        // Case 3: Clearly late
-        JitterPacket p3 = new JitterPacket(new byte[]{5, 6}, 80, 10, 3);
-        buffer.put(p3);  // expected to be dropped
-        buffer.debugPrint();
-
-        System.out.println("Test 4");
-        // Case 4: Fill buffer
-        for (int i = 0; i < 10; i++) {
-            JitterPacket p = new JitterPacket(new byte[]{(byte)i}, 120 + i * 10, 10, i + 10);
-            buffer.put(p);
-        }
-        buffer.debugPrint();
-
-        System.out.println("Test 5");
-        // Case 5: Force eviction
-        JitterPacket newest = new JitterPacket(new byte[]{99}, 300, 10, 999);
-        buffer.put(newest);
-        buffer.debugPrint();
-        */
-        testPutAndGetSinglePacket();
-        testInterpolationTriggered();
-        testGetWithEmptyBufferThrows();
-        testGetSelectsBestFitPacket();
-        testLostCountIncrementsIfNothingFound();
+        testGetExactMatch();
+        testGetInterpolation();
+        testGetLatePacket();
+        testGetFuturePacketFallback();
+        testExpiredPacketSkipped();
+        testLostPacketHandling();
+        testInitialResetSync();
     }
 
-    private static void testPutAndGetSinglePacket() {
+    private static void testGetExactMatch() {
+        System.out.println("Running testGetExactMatch...");
+        JitterBuffer buffer = new JitterBuffer(20);
+        buffer.setPointerTimestamp(0);
+        buffer.setNextStop(0);
+
+        JitterPacket p = new JitterPacket(new byte[]{1}, 0, 20, 0, 0, 0);
+        buffer.put(p);
+
+        JitterPacket out = new JitterPacket(null, 0, 0, 0, 0, 0);
+
         try {
-            JitterBuffer buffer = new JitterBuffer(20);
-            JitterPacket packet = new JitterPacket();
-            packet.timestamp = 0;
-            packet.span = 20;
-            packet.data = new byte[] {1, 2, 3};
-            packet.len = 3;
-            packet.sequence = 1;
-
-            buffer.put(packet);
-            buffer.setNextStop(0);
-            buffer.setPointerTimestamp(0);
-
-            JitterPacket out = new JitterPacket();
             buffer.get(out);
-
-            assertTrue(out.data != null && out.data[0] == 1, "Data matches");
-            assertEquals(0, out.timestamp, "Timestamp matches");
-            assertEquals(20, out.span, "Span matches");
-            assertEquals(1, out.sequence, "Sequence matches");
-            assertEquals(0, out.status, "Status OK");
-
-            System.out.println("testPutAndGetSinglePacket PASSED");
+            assertEquals(0, out.timestamp, "timestamp");
+            assertEquals(20, out.span, "span");
+            assertEquals(0, out.status, "status");
+            System.out.println("PASS\n");
         } catch (Exception e) {
-            System.out.println("testPutAndGetSinglePacket FAILED: " + e.getMessage());
+            System.out.println("FAIL: " + e.getMessage());
         }
     }
 
-    private static void testInterpolationTriggered() {
-        try {
-            JitterBuffer buffer = new JitterBuffer(20);
-            buffer.setinterpRequested(20);
+    private static void testGetInterpolation() {
+        System.out.println("Running testGetInterpolation...");
+        JitterBuffer buffer = new JitterBuffer(20);
+        buffer.setPointerTimestamp(0);
+        buffer.setinterpRequested(20);
 
-            JitterPacket out = new JitterPacket();
+        JitterPacket out = new JitterPacket(null, 0, 0, 0, 0, 0);
+        try {
             buffer.get(out);
-
-            assertEquals(20, out.span, "Span");
-            assertEquals(0, out.timestamp, "Timestamp");
-            assertEquals(2, out.status, "Status: Interpolation");
-
-            System.out.println("testInterpolationTriggered PASSED");
+            assertEquals(2, out.status, "status");
+            assertEquals(0, out.timestamp, "timestamp");
+            assertEquals(20, out.span, "span");
+            assertEquals(0, out.len, "len");
+            System.out.println("PASS\n");
         } catch (Exception e) {
-            System.out.println("testInterpolationTriggered FAILED: " + e.getMessage());
+            System.out.println("FAIL: " + e.getMessage());
         }
     }
 
-    private static void testGetWithEmptyBufferThrows() {
+    private static void testGetLatePacket() {
+        System.out.println("Running testGetLatePacket...");
+        JitterBuffer buffer = new JitterBuffer(20);
+        buffer.setPointerTimestamp(40);
+        buffer.setNextStop(40);
+
+        // Late but still spans the current pointer window
+        JitterPacket p = new JitterPacket(new byte[]{2}, 30, 20, 1, 0, 0);
+        buffer.put(p);
+
+        JitterPacket out = new JitterPacket(null, 0, 0, 0, 0, 0);
         try {
-            JitterBuffer buffer = new JitterBuffer(20);
-            buffer.reset(); // triggers resetState = true
-
-            JitterPacket out = new JitterPacket();
-            buffer.get(out); // Should throw
-
-            System.out.println("testGetWithEmptyBufferThrows FAILED (did not throw)");
-        } catch (Exception e) {
-            System.out.println("testGetWithEmptyBufferThrows PASSED");
-        }
-    }
-
-    private static void testGetSelectsBestFitPacket() {
-        try {
-            JitterBuffer buffer = new JitterBuffer(20);
-            for (int i = 0; i < 3; i++) {
-                JitterPacket p = new JitterPacket();
-                p.timestamp = i * 20;
-                p.span = 20;
-                p.data = new byte[] {(byte)(i + 1)};
-                p.len = 1;
-                p.sequence = i;
-                buffer.put(p);
-            }
-
-            buffer.debugPrint();
-
-            buffer.setPointerTimestamp(0);
-            buffer.setNextStop(0);
-
-            JitterPacket out = new JitterPacket();
             buffer.get(out);
-
-            assertEquals(0, out.timestamp, "Best-fit timestamp");
-            assertEquals((byte)1, out.data[0], "Best-fit data");
-            System.out.println("testGetSelectsBestFitPacket PASSED");
+            assertEquals(30, out.timestamp, "timestamp");
+            assertEquals(20, out.span, "span");
+            assertEquals(0, out.status, "status");
+            System.out.println("PASS\n");
         } catch (Exception e) {
-            System.out.println("testGetSelectsBestFitPacket FAILED: " + e.getMessage());
+            System.out.println("FAIL: " + e.getMessage());
         }
     }
 
-    private static void testLostCountIncrementsIfNothingFound() {
+    private static void testGetFuturePacketFallback() {
+        System.out.println("Running testGetFuturePacketFallback...");
+        JitterBuffer buffer = new JitterBuffer(20);
+        buffer.setPointerTimestamp(20);
+        buffer.setNextStop(20);
+
+        // No matching packet, but this one starts at 30
+        JitterPacket p = new JitterPacket(new byte[]{3}, 30, 20, 2, 0, 0);
+        buffer.put(p);
+
+        JitterPacket out = new JitterPacket(null, 0, 0, 0, 0, 0);
         try {
-            JitterBuffer buffer = new JitterBuffer(20);
-            buffer.setPointerTimestamp(100); // No packets in future
-
-            JitterPacket out = new JitterPacket();
-            buffer.get(out); // No packet should be found
-
-            assertEquals(1, buffer.getLostCount(), "Lost count incremented");
-            System.out.println("testLostCountIncrementsIfNothingFound PASSED");
+            buffer.get(out);
+            assertEquals(30, out.timestamp, "timestamp (future fallback)");
+            assertEquals(20, out.span, "span");
+            assertEquals(0, out.status, "status");
+            System.out.println("PASS\n");
         } catch (Exception e) {
-            System.out.println("testLostCountIncrementsIfNothingFound FAILED: " + e.getMessage());
+            System.out.println("FAIL: " + e.getMessage());
         }
     }
 
-    // === Assertion Helpers ===
+    private static void testExpiredPacketSkipped() {
+        System.out.println("Running testExpiredPacketSkipped...");
+        JitterBuffer buffer = new JitterBuffer(20);
+        buffer.setResetState(false);
+        buffer.setPointerTimestamp(100);
+        buffer.setNextStop(100);
+
+        // This packet should be skipped — it ended before the pointer
+        JitterPacket expired = new JitterPacket(new byte[]{4}, 50, 20, 3, 0, 0);
+        buffer.put(expired);
+
+        JitterPacket out = new JitterPacket(null, 0, 0, 0, 0, 0);
+        try {
+            buffer.get(out);
+            assertEquals(1, out.status, "status LOST");
+            assertEquals(120, buffer.getPointerTimestamp(), "pointer advanced");
+            System.out.println("PASS\n");
+        } catch (Exception e) {
+            System.out.println("FAIL: " + e.getMessage());
+        }
+    }
+
+    private static void testLostPacketHandling() {
+        System.out.println("Running testLostPacketHandling...");
+        JitterBuffer buffer = new JitterBuffer(20);
+        buffer.setPointerTimestamp(0);
+        buffer.setNextStop(0);
+
+        // No packets in buffer
+        JitterPacket out = new JitterPacket(null, 0, 0, 0, 0, 0);
+        try {
+            buffer.get(out);
+            assertEquals(1, out.status, "status LOST");
+            assertEquals(20, buffer.getPointerTimestamp(), "pointer advanced");
+            assertEquals(1, buffer.getLostCount(), "lost count incremented");
+            System.out.println("PASS\n");
+        } catch (Exception e) {
+            System.out.println("FAIL: " + e.getMessage());
+        }
+    }
+
+    private static void testInitialResetSync() {
+        System.out.println("Running testInitialResetSync...");
+        JitterBuffer buffer = new JitterBuffer(20);
+        buffer.reset(); // force resetState = true
+
+        // Add one packet — should cause sync during get()
+        JitterPacket p = new JitterPacket(new byte[]{5}, 80, 20, 5, 0, 0);
+        buffer.put(p);
+
+        JitterPacket out = new JitterPacket(null, 0, 0, 0, 0, 0);
+        try {
+            buffer.get(out);
+            assertEquals(80, out.timestamp, "reset sync works");
+            assertEquals(false, buffer.isResetState(), "resetState cleared");
+            System.out.println("PASS\n");
+        } catch (Exception e) {
+            System.out.println("FAIL: " + e.getMessage());
+        }
+    }
+
+    // === Assertion helpers ===
     private static void assertEquals(int expected, int actual, String label) {
         if (expected != actual) {
             throw new AssertionError(label + ": expected " + expected + ", got " + actual);
         }
     }
 
-    private static void assertEquals(byte expected, byte actual, String label) {
+    private static void assertEquals(boolean expected, boolean actual, String label) {
         if (expected != actual) {
             throw new AssertionError(label + ": expected " + expected + ", got " + actual);
-        }
-    }
-
-    private static void assertTrue(boolean condition, String label) {
-        if (!condition) {
-            throw new AssertionError(label + " failed");
         }
     }
 }

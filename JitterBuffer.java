@@ -33,8 +33,8 @@ public class JitterBuffer {
             for (i = 0; i < this.packets.length; i++) {
                 // Do nothing if the packet is fully in the past
                 // Don't need to free or destroy in Java
-                if (packets[i] != null && packets[i].data != null) {
-                    if (packets[i].timestamp + packets[i].span + this.delayStep <= this.pointerTimestamp) {
+                if (this.packets[i] != null && this.packets[i].data != null) {
+                    if (this.packets[i].timestamp + this.packets[i].span + this.delayStep <= this.pointerTimestamp) {
                         this.packets[i] = null;
                     }
                 }
@@ -86,7 +86,7 @@ public class JitterBuffer {
             boolean found = false;
             int oldest_timestamp = 0;
             for (i = 0; i < this.packets.length; i++) {
-                if (this.packets[i].data != null && (!found || this.packets[i].timestamp < oldest_timestamp)) {
+                if (this.packets[i] != null && this.packets[i].data != null && (!found || this.packets[i].timestamp < oldest_timestamp)) {
                     oldest_timestamp = this.packets[i].timestamp;
                     found = true;
                 }
@@ -103,13 +103,15 @@ public class JitterBuffer {
                 throw new Exception("No packet found in the jitter buffer. Invalid jitter buffer.");
             }
         }
-        this.pointerTimestamp = this.lastReturnedTimestamp;
         
+        this.debugPrint();
+
         // Search for best-fit packet
         // Option 1: Packet with the exact timestamp and spans the entire chunk
         for (i = 0; i < this.packets.length; i++) {
             if (this.packets[i] != null && this.packets[i].data != null && this.packets[i].timestamp == this.pointerTimestamp
                 && this.packets[i].timestamp + this.packets[i].span >= this.pointerTimestamp + this.delayStep) {
+                System.out.println("Packet type 1");    
                 break;
             }
         }
@@ -118,6 +120,7 @@ public class JitterBuffer {
             for (i = 0; i < this.packets.length; i++) {
                 if (this.packets[i] != null && this.packets[i].data != null && this.packets[i].timestamp <= this.pointerTimestamp
                     && this.packets[i].timestamp + this.packets[i].span >= this.pointerTimestamp + this.delayStep) {
+                    System.out.println("Packet type 2");
                     break;
                 }
             }
@@ -127,6 +130,7 @@ public class JitterBuffer {
             for (i = 0; i < this.packets.length; i++) {
                 if (this.packets[i] != null && this.packets[i].data != null && this.packets[i].timestamp <= this.pointerTimestamp
                     && this.packets[i].timestamp + this.packets[i].span > this.pointerTimestamp) {
+                    System.out.println("Packet type 3");
                     break;
                 }
             }
@@ -151,10 +155,14 @@ public class JitterBuffer {
                 }
             }
             if (found) {
+                System.out.println("Packet type 4");
                 i = best_index;
             }
+            else {
+                System.out.println("Packet type NONE");
+            }
         }
-        System.out.println("Found packet at index " + i + " ");
+        System.out.print(" | Found packet at index " + i + " ");
         // If we find something
         if (i != this.packets.length) {
             int offset;
@@ -170,6 +178,7 @@ public class JitterBuffer {
             packet.sequence = this.packets[i].sequence;
             packet.userData = this.packets[i].userData;
             this.pointerTimestamp = this.packets[i].timestamp + this.packets[i].span;
+            this.pointerTimestamp = this.lastReturnedTimestamp;
             this.buffered = packet.span - delayStep;
             //if (start_offset == -1) {
                 //this.buffered = start_offset;
@@ -191,6 +200,14 @@ public class JitterBuffer {
                 this.buffered = packet.span - this.delayStep;
                 packet.status = 2;
                 return;
+            }
+            else {
+                packet.timestamp = this.pointerTimestamp;
+                packet.span = this.delayStep;
+                packet.len = 0;
+                packet.status = 1; 
+                this.pointerTimestamp += this.delayStep;
+                this.buffered = 0;
             }
         }
         return;
@@ -226,6 +243,10 @@ public class JitterBuffer {
 
     public boolean isResetState() {
         return resetState;
+    }
+
+    public void setResetState(boolean state) {
+        this.resetState = state;
     }
 
     public int getLostCount() {

@@ -18,8 +18,7 @@ public class JitterPacket {
     }
 
     public JitterPacket(byte[] data, int timestamp, int span, int sequence, int status, int userData) {
-        // constructor body
-        this.data = data;
+        this.data = (data != null) ? data : new byte[0]; // default to empty array
         this.timestamp = timestamp;
         this.span = span;
         this.sequence = sequence;
