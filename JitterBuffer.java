@@ -33,11 +33,10 @@ public class JitterBuffer {
             for (i = 0; i < this.packets.length; i++) {
                 // Do nothing if the packet is fully in the past
                 // Don't need to free or destroy in Java
-                if (packet.timestamp + packet.span + this.delayStep <= this.pointerTimestamp) {
-                    continue;
-                }
-                else {
-                    this.packets[i] = null;
+                if (packets[i] != null && packets[i].data != null) {
+                    if (packets[i].timestamp + packets[i].span + this.delayStep <= this.pointerTimestamp) {
+                        this.packets[i] = null;
+                    }
                 }
             }
         }
@@ -105,17 +104,6 @@ public class JitterBuffer {
             }
         }
         this.pointerTimestamp = this.lastReturnedTimestamp;
-        // Interpolation Logic 
-        if (this.interpRequested != 0) {
-            packet.timestamp = this.pointerTimestamp;
-            packet.span = this.interpRequested;
-            this.pointerTimestamp += this.interpRequested;
-            packet.len = 0;
-            this.interpRequested = 0;
-            this.buffered = packet.span - this.delayStep;
-            packet.status = 2;
-            return;
-        }
         
         // Search for best-fit packet
         // Option 1: Packet with the exact timestamp and spans the entire chunk
@@ -166,7 +154,7 @@ public class JitterBuffer {
                 i = best_index;
             }
         }
-
+        System.out.println("Found packet at index " + i + " ");
         // If we find something
         if (i != this.packets.length) {
             int offset;
@@ -193,6 +181,17 @@ public class JitterBuffer {
             this.lostCount++;
             // opt = compute_opt_delay(this);
             // opt stuff, for adaptive filter
+            // Interpolation Logic 
+            if (this.interpRequested != 0) {
+                packet.timestamp = this.pointerTimestamp;
+                packet.span = this.interpRequested;
+                this.pointerTimestamp += this.interpRequested;
+                packet.len = 0;
+                this.interpRequested = 0;
+                this.buffered = packet.span - this.delayStep;
+                packet.status = 2;
+                return;
+            }
         }
         return;
     }
@@ -231,6 +230,10 @@ public class JitterBuffer {
 
     public int getLostCount() {
         return lostCount;
+    }
+
+    public void setinterpRequested(int request) {
+        this.interpRequested = request;
     }
 
     public void reset() {

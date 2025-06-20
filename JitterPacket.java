@@ -7,6 +7,16 @@ public class JitterPacket {
     public int status;
     public int userData;
 
+    public JitterPacket() {
+        this.data = new byte[0];
+        this.timestamp = 0;
+        this.span = 0;
+        this.sequence = 0;
+        this.status = 0;
+        this.userData = 0;
+        this.len = 0;
+    }
+
     public JitterPacket(byte[] data, int timestamp, int span, int sequence, int status, int userData) {
         // constructor body
         this.data = data;
