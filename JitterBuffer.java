@@ -1,7 +1,10 @@
+import java.util.*;
+
 public class JitterBuffer {
     private static final int BUFFER_SIZE = 10;
     private JitterPacket[] packets;
     private int[] arrival;
+    private JitterPacket lastValidPacket;
     private int nextStop;
     private int pointerTimestamp;
     private int lastReturnedTimestamp;
@@ -14,6 +17,7 @@ public class JitterBuffer {
     public JitterBuffer(int delayStep) {
         this.packets = new JitterPacket[BUFFER_SIZE];
         this.arrival = new int[BUFFER_SIZE];
+        this.lastValidPacket = null;
         this.nextStop = 0; // Need to manually set
         this.pointerTimestamp = 0;
         this.lastReturnedTimestamp = 0;
@@ -168,7 +172,7 @@ public class JitterBuffer {
             int offset;
             this.lostCount = 0;
             if (this.arrival[i] != 0) {
-                // update timings (adaptive buffer, don't need to worry about this yet)
+                // update timings 
             }
             packet.data = this.packets[i].data;
             packet.len = this.packets[i].len;
@@ -185,11 +189,17 @@ public class JitterBuffer {
             //}
             packet.status = 0;
             this.packets[i] = null;
+
+            this.lastValidPacket = new JitterPacket();
+            this.lastValidPacket.data = Arrays.copyOf(packet.data, packet.data.length);
+            this.lastValidPacket.span = packet.span;
+            this.lastValidPacket.timestamp = packet.timestamp;
         }
+        // Missing Packet
         else {
             this.lostCount++;
             // opt = compute_opt_delay(this);
-            // opt stuff, for adaptive filter
+            // opt stuff
             // Interpolation Logic 
             if (this.interpRequested != 0) {
                 packet.timestamp = this.pointerTimestamp;
@@ -201,16 +211,36 @@ public class JitterBuffer {
                 packet.status = 2;
                 return;
             }
-            else {
+            else if (this.lastValidPacket != null) {
+                float attenuation = (float) Math.pow(0.8, this.lostCount);
+                byte[] attenuated = applyAttenuation(this.lastValidPacket.data, attenuation);
+
+                packet.data = attenuated;
+                packet.span = this.lastValidPacket.span;
                 packet.timestamp = this.pointerTimestamp;
-                packet.span = this.delayStep;
-                packet.len = 0;
-                packet.status = 1; 
                 this.pointerTimestamp += this.delayStep;
-                this.buffered = 0;
+                packet.status = 1;
+            } 
+            else {
+                // No valid packet to repeat — fall back to silence
+                packet.data = new byte[0]; // or 0s
+                packet.span = this.delayStep;
+                packet.timestamp = this.pointerTimestamp;
+                this.pointerTimestamp += this.delayStep;
+                packet.status = 1;
             }
         }
         return;
+    }
+
+    private byte[] applyAttenuation(byte[] data, float attenuation) {
+        byte[] output = new byte[data.length];
+        for (int i = 0; i < data.length; i++) {
+            int sample = (int) (data[i] * attenuation);
+            sample = Math.max(Byte.MIN_VALUE, Math.min(Byte.MAX_VALUE, sample));
+            output[i] = (byte) sample;
+        }
+        return output;
     }
 
     public JitterPacket[] getPackets() {
@@ -270,7 +300,6 @@ public class JitterBuffer {
         this.buffered = 0;
         this.interpRequested = 0;
     }
-
 
     // Debug function to print buffer state
     public void debugPrint() {
