@@ -1,22 +1,43 @@
-import java.utils.*;
+package me.fetong.jitterbuffer;
+
+import java.util.*;
 import javax.sound.sampled.*;
 import java.io.File;
+import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import io.github.jaredmdobson.concentus.*;
 
-public class OpusTestDecoder {
+public class OpusTestEncoder {
+    private final int VOIP = 2048;
     private File file;
-    private byte[] opusEncoded;
+    private int frameSize;
+    private final OpusEncoder encoder;
 
-    public OpusTestDecoder(File file) {
+    public OpusTestEncoder(File file, int frameSize) throws OpusException {
         this.file = file;
+        this.frameSize = frameSize;
+        this.encoder = new OpusEncoder(48000, 1, OpusApplication.OPUS_APPLICATION_VOIP);
     }
 
-    public void encode() {
-        OpusEncoder encoder = new OpusEncoder(48000, 1, OpusApplication.VOIP);
-        short[] pcmShorts = this.extracPCM()
+    public List<JitterPacket> encode() throws IOException, UnsupportedAudioFileException, OpusException {
+        short[] pcmShorts = this.extractPCM();
+        List<short[]> splits = this.splitIntoFrames(pcmShorts, this.frameSize);
+        List<JitterPacket> bufferInput = this.encodeAndPacketize(splits);
+        return bufferInput;
+    }
 
-        byte[] encoded = new byte[1276]; // Opus frame max lenghth + 1 byte for the header
-        int len = encoder.encode()
+    private List<JitterPacket> encodeAndPacketize(List<short[]> frames) throws IOException, UnsupportedAudioFileException, OpusException{
+        List<JitterPacket> bufferInput = new ArrayList<>();
+        for (int i = 0; i < frames.size(); i++) {
+            byte[] encodedBuffer = new byte[1276];
+            int len = this.encoder.encode(frames.get(i), 0, 960, encodedBuffer, 0, encodedBuffer.length);
+            byte[] encodedFrame = Arrays.copyOf(encodedBuffer, len);
+            JitterPacket packet = new JitterPacket(encodedFrame, i * frameSize, frameSize, i, 0, 0);
+            bufferInput.add(packet);
+        }
+        return bufferInput;
     }
 
     // Returns flattened array
