@@ -1,6 +1,5 @@
 package me.fetong.jitterbuffer;
-import net.sourceforge.concentus.OpusDecoder;
-import net.sourceforge.concentus.OpusEncoder;
+import io.github.jaredmdobson.concentus.OpusDecoder;
 
 import java.util.*;
 
