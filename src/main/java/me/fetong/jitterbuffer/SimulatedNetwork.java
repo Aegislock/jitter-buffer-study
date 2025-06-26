@@ -1,3 +1,5 @@
+package me.fetong.jitterbuffer;
+
 import java.util.*;
 
 public class SimulatedNetwork {
@@ -25,13 +27,14 @@ public class SimulatedNetwork {
         }
         double jitter = Math.random() * this.maxJitterMs;
         double latency = baseLatency + jitter;
-        SimulatedPacket simPacket = new SimulatedPacket(packet, currentTimeMs + latency);
+        // Casting here is only ok for simulation purposes where timing is in milliseconds
+        SimulatedPacket simPacket = new SimulatedPacket(packet, (long) (currentTimeMs + latency));
         packetQueue.add(simPacket);
     }
 
     // Deliver the ready packets to the jitter buffer
     // Return all packets from packetQueue whose deliveryTime <= currentTimeMs
-    public List<JitterPacket> deliverReadyPackets(long currentTimeMs) {
+    public List<JitterPacket> deliverReadyPackets(long currentTimeMs, boolean reswapping) {
         List<JitterPacket> readyPackets = new ArrayList<>();
         while (!this.packetQueue.isEmpty() && 
                 this.packetQueue.peek().deliveryTime <= currentTimeMs) {
@@ -46,6 +49,9 @@ public class SimulatedNetwork {
                 JitterPacket temp = previous;
                 readyPackets.set(i - 1, readyPackets.get(i));
                 readyPackets.set(i, temp);
+                if (!reswapping) {
+                    i++;
+                }
             }
             previous = readyPackets.get(i);
         }
