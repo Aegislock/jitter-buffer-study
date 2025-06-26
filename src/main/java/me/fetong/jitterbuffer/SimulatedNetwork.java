@@ -14,22 +14,46 @@ public class SimulatedNetwork {
         this.maxJitterMs = maxJitterMs;
         this.packetLossProbability = packetLossProbability;
         this.reorderProbability = reorderProbability;
-        this.packetQueue = new PriorityQueue<>();
+        this.packetQueue = new PriorityQueue<>(); // set comparator for the deliveryTime instance variable
     }
 
     // Add a SimulatedPacket to the PQ
-    public void submitPacket(JitterPacket packet) {
-
+    public void submitPacket(JitterPacket packet, long currentTimeMs) {
+        // Roll for packet loss
+        if (this.packetLossProbability > Math.random()) {
+            return;
+        }
+        double jitter = Math.random() * this.maxJitterMs;
+        double latency = baseLatency + jitter;
+        SimulatedPacket simPacket = new SimulatedPacket(packet, currentTimeMs + latency);
+        packetQueue.add(simPacket);
     }
 
     // Deliver the ready packets to the jitter buffer
     // Return all packets from packetQueue whose deliveryTime <= currentTimeMs
     public List<JitterPacket> deliverReadyPackets(long currentTimeMs) {
-
+        List<JitterPacket> readyPackets = new ArrayList<>();
+        while (!this.packetQueue.isEmpty() && 
+                this.packetQueue.peek().deliveryTime <= currentTimeMs) {
+            SimulatedPacket simPacket = this.packetQueue.poll();
+            JitterPacket jitterPacket = simPacket.packet;
+            readyPackets.add(jitterPacket);
+        }
+        JitterPacket previous = null;
+        for (int i = 0; i < readyPackets.size(); i++) {
+            boolean reordering = (this.reorderProbability > Math.random());
+            if (reordering && previous != null) {
+                JitterPacket temp = previous;
+                readyPackets.set(i - 1, readyPackets.get(i));
+                readyPackets.set(i, temp);
+            }
+            previous = readyPackets.get(i);
+        }
+        return readyPackets;
     }
 
     // Simulated Network Stuff
-
+    // Implements a comparator
     private static class SimulatedPacket implements Comparable<SimulatedPacket> {
         public final JitterPacket packet;
         public final long deliveryTime;
@@ -39,6 +63,7 @@ public class SimulatedNetwork {
             this.deliveryTime = deliveryTime;
         }
 
+        // Comparator condition for the priority queue
         @Override
         public int compareTo(SimulatedPacket otherPacket) {
             return Long.compare(this.deliveryTime, otherPacket.deliveryTime);
