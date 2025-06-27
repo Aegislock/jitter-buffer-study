@@ -6,7 +6,7 @@ import java.io.IOException;
 import io.github.jaredmdobson.concentus.*;
 
 public class JitterTestSimulator {
-    private SimulatedNetwork simulatedNetwork;
+     private SimulatedNetwork simulatedNetwork;
     private JitterBuffer jitterBuffer;
     private OpusTestEncoder encoder;
     private Decoder decoder;
@@ -67,7 +67,7 @@ public class JitterTestSimulator {
             // 0. Check Correct Timeframe
             if (currentTimeMs % this.sendIntervalMs == 0) {
                 // 1. Packet Generation
-                if (this.encoder != null and packetIndex < packets.size()) {
+                if (this.encoder != null && packetIndex < packets.size()) {
                     JitterPacket current = packets.get(packetIndex);
                     this.simulatedNetwork.submitPacket(current, currentTimeMs);
                     sent++;
@@ -78,28 +78,26 @@ public class JitterTestSimulator {
                 }
             }
             // 2. Packet delivery
-                List<JitterPacket> delivered = this.simulatedNetwork.deliverReadyPackets(currentTimeMs, this.reswapping);
-                for (int i = 0; i < delivered.size(); i++) {
-                    this.jitterBuffer.put(delivered.get(i));
-                    deliveredPackets++;
-                }
-                // 3. Playback Attempt
-                JitterPacket outPacket = new JitterPacket();
-                this.jitterBuffer.get(outPacket);
-                if (outPacket.status != 1) {
-                    // Decoder stuff
-                }
-                else {
-                    // Decoder stuff
-                }
-                if (this.playbackEnabled) {
-                    // play audio
-                }
-                // 4. Advance Time
-                
+            List<JitterPacket> delivered = this.simulatedNetwork.deliverReadyPackets(currentTimeMs, this.reswapping);
+            for (int i = 0; i < delivered.size(); i++) {
+                this.jitterBuffer.put(delivered.get(i));
+                deliveredPackets++;
             }
+            // 3. Playback Attempt
+            JitterPacket outPacket = new JitterPacket();
+            this.jitterBuffer.get(outPacket);
+            if (outPacket.status != 1) {
+                // Decoder stuff
+            }
+            else {
+                // Decoder stuff
+            }
+            if (this.playbackEnabled) {
+                // play audio
+            }
+            // 4. Advance Time
             currentTimeMs += this.tickStepMs;
-        }
+        } 
     }
 
     public void printSummary() {

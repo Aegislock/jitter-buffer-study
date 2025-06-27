@@ -23,7 +23,6 @@ public class SimulatedNetwork {
     public void submitPacket(JitterPacket packet, long currentTimeMs) {
         // Roll for packet loss
         if (this.packetLossProbability > Math.random()) {
-            packet.status = 1; // Lost Packet
             return;
         }
         double jitter = Math.random() * this.maxJitterMs;
