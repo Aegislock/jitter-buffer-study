@@ -1,5 +1,4 @@
 package me.fetong.jitterbuffer;
-import io.github.jaredmdobson.concentus.OpusDecoder;
 
 import java.util.*;
 
@@ -211,7 +210,7 @@ public class JitterBuffer {
                 packet.len = 0;
                 this.interpRequested = 0;
                 this.buffered = packet.span - this.delayStep;
-                packet.status = 2;
+                packet.status = 2; // Interpolated
                 return;
             }
             else if (this.lastValidPacket != null) {
