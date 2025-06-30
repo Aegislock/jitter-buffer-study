@@ -213,16 +213,6 @@ public class JitterBuffer {
                 packet.status = 2; // Interpolated
                 return;
             }
-            else if (this.lastValidPacket != null) {
-                float attenuation = (float) Math.pow(0.8, this.lostCount);
-                byte[] attenuated = applyAttenuation(this.lastValidPacket.data, attenuation);
-
-                packet.data = attenuated;
-                packet.span = this.lastValidPacket.span;
-                packet.timestamp = this.pointerTimestamp;
-                this.pointerTimestamp += this.delayStep;
-                packet.status = 1;
-            } 
             else {
                 // No valid packet to repeat — fall back to silence
                 packet.data = new byte[0]; // or 0s
@@ -234,17 +224,7 @@ public class JitterBuffer {
         }
         return;
     }
-
-    private byte[] applyAttenuation(byte[] data, float attenuation) {
-        byte[] output = new byte[data.length];
-        for (int i = 0; i < data.length; i++) {
-            int sample = (int) (data[i] * attenuation);
-            sample = Math.max(Byte.MIN_VALUE, Math.min(Byte.MAX_VALUE, sample));
-            output[i] = (byte) sample;
-        }
-        return output;
-    }
-
+    
     public JitterPacket[] getPackets() {
         return packets;
     }

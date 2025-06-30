@@ -9,7 +9,7 @@ public class JitterTestSimulator {
      private SimulatedNetwork simulatedNetwork;
     private JitterBuffer jitterBuffer;
     private OpusTestEncoder encoder;
-    private Decoder decoder;
+    private OpusTestDecoder decoder;
     private AudioPlayer audioPlayer;
     private int baseLatencyMs;
     private int sendIntervalMs;
@@ -20,7 +20,7 @@ public class JitterTestSimulator {
     private boolean playbackEnabled;
 
     public JitterTestSimulator(SimulatedNetwork simulatedNetwork, JitterBuffer jitterBuffer, OpusTestEncoder encoder, 
-                                Decoder decoder, AudioPlayer audioPlayer, int baseLatencyMs, int sendIntervalMs, int tickStepMs, 
+                                OpusTestDecoder decoder, AudioPlayer audioPlayer, int baseLatencyMs, int sendIntervalMs, int tickStepMs, 
                                 int totalDurationMs, boolean reswapping, boolean verbose, boolean playbackEnabled) throws IoException {
         if (simulatedNetwork == null || jitterBuffer == null || decoder == null) {
             throw new IllegalArgumentException("Core simulation components must not be null");
