@@ -1,4 +1,4 @@
-import me.fetong.jitterbuffer;
+package me.fetong.jitterbuffer;
 
 import java.util.*;
 import java.io.File;
@@ -6,7 +6,7 @@ import java.io.IOException;
 import io.github.jaredmdobson.concentus.*;
 
 public class JitterTestSimulator {
-     private SimulatedNetwork simulatedNetwork;
+    private SimulatedNetwork simulatedNetwork;
     private JitterBuffer jitterBuffer;
     private OpusTestEncoder encoder;
     private OpusTestDecoder decoder;
@@ -18,10 +18,11 @@ public class JitterTestSimulator {
     private boolean reswapping;
     private boolean verbose;
     private boolean playbackEnabled;
+    private short[] lastValidPCM;
 
     public JitterTestSimulator(SimulatedNetwork simulatedNetwork, JitterBuffer jitterBuffer, OpusTestEncoder encoder, 
                                 OpusTestDecoder decoder, AudioPlayer audioPlayer, int baseLatencyMs, int sendIntervalMs, int tickStepMs, 
-                                int totalDurationMs, boolean reswapping, boolean verbose, boolean playbackEnabled) throws IoException {
+                                int totalDurationMs, boolean reswapping, boolean verbose, boolean playbackEnabled) throws IOException {
         if (simulatedNetwork == null || jitterBuffer == null || decoder == null) {
             throw new IllegalArgumentException("Core simulation components must not be null");
         }
@@ -32,7 +33,7 @@ public class JitterTestSimulator {
         if (baseLatencyMs <= 0) {
             throw new IllegalArgumentException("Latency must be a positive integer");
         }
-        this.baseLatency = baseLatency;
+        this.baseLatencyMs = baseLatencyMs;
         if (sendIntervalMs <= 0) {
             throw new IllegalArgumentException("Packet send interval must be a positive integer");
         }
@@ -48,9 +49,10 @@ public class JitterTestSimulator {
         this.reswapping = reswapping;
         this.verbose = verbose;
         this.playbackEnabled = playbackEnabled;
+        this.lastValidPCM = null;
     }
 
-    public void run() {
+    public void run() throws Exception {
         // Initialize simulation time
         long currentTimeMs = 0;
         // Intialize packet index;
@@ -86,18 +88,31 @@ public class JitterTestSimulator {
             // 3. Playback Attempt
             JitterPacket outPacket = new JitterPacket();
             this.jitterBuffer.get(outPacket);
-            if (outPacket.status != 1) {
-                // Decoder stuff
+            short[] decoded;
+            if (outPacket.status == 2 && lastValidPCM != null) {
+                decoded = applyAttenuation();
+            } else {
+                decoded = decoder.decode(outPacket);
             }
-            else {
-                // Decoder stuff
-            }
+            this.lastValidPCM = decoded;
             if (this.playbackEnabled) {
                 // play audio
             }
             // 4. Advance Time
             currentTimeMs += this.tickStepMs;
         } 
+    }
+
+    private short[] applyAttenuation() {
+        short[] input = this.lastValidPCM;
+        short[] output = new short[input.length];
+        float attenuationFactor = (float) Math.pow(0.8, this.jitterBuffer.getLostCount());
+        for (int i = 0; i < input.length; i++) {
+            int sample = (int) (input[i] * attenuationFactor);
+            sample = Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, sample));
+            output[i] = (short) sample;
+        }
+        return output;
     }
 
     public void printSummary() {
