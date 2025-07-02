@@ -17,7 +17,7 @@ public class OpusTestEncoder {
     public OpusTestEncoder(File file, int frameSize) throws OpusException {
         this.file = file;
         this.frameSize = frameSize;
-        this.encoder = new OpusEncoder(48000, 2, OpusApplication.OPUS_APPLICATION_VOIP);
+        this.encoder = new OpusEncoder(48000, 1, OpusApplication.OPUS_APPLICATION_VOIP);
     }
 
     public List<JitterPacket> encode() throws IOException, UnsupportedAudioFileException, OpusException {

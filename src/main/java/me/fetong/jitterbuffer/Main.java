@@ -21,13 +21,13 @@ public class Main {
 
         System.out.println("Audio duration: " + totalDurationMs + " ms");
 
-        int frameSize = 1920;
+        int frameSize = 960;
 
         OpusTestEncoder encoder = new OpusTestEncoder(wavFile, frameSize);
-        JitterBuffer buffer = new JitterBuffer(frameSize/48); // buffer operates in samples
+        JitterBuffer buffer = new JitterBuffer(20); //
 
         SimulatedNetwork network = new SimulatedNetwork(
-            20, 10f, 0.02f, 0.15f
+            20, 10f, 0.00f, 0.15f
         );
 
         OpusTestDecoder decoder = new OpusTestDecoder();

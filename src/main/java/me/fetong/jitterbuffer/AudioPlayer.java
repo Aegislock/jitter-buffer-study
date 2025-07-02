@@ -5,7 +5,7 @@ import javax.sound.sampled.*;
 public class AudioPlayer {
     private SourceDataLine line;
     private final int sampleRate = 48000;
-    private final int channels = 2;
+    private final int channels = 1;
     private final int bufferSize = 960 * 2; // 960 samples, 2 bytes per sample (16-bit)
 
     public AudioPlayer() throws LineUnavailableException {
