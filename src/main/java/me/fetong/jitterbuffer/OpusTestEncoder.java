@@ -40,7 +40,7 @@ public class OpusTestEncoder {
             // There may be empty space at the end of encodedBuffer that is not filled
             // We use copyOf here to only copy useful information into encodedFrame
             byte[] encodedFrame = Arrays.copyOf(encodedBuffer, len);
-            JitterPacket packet = new JitterPacket(encodedFrame, i * frameSize, i, 0, 0);
+            JitterPacket packet = new JitterPacket(encodedFrame, i * 20, i, 0, 0);
             bufferInput.add(packet);
         }
         return bufferInput;

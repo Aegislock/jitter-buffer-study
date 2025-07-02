@@ -32,6 +32,7 @@ public class JitterBuffer {
 
     // Insert a packet into the buffer
     public void put(JitterPacket packet) {
+        System.out.println("Trying to put packet: ts=" + packet.timestamp + ", seq=" + packet.sequence);
         boolean late = false;
         int i, j;
         // Cleanup (remove old packets that weren't played)
@@ -47,6 +48,7 @@ public class JitterBuffer {
             }
         }
         // If a packet is hopelessly late
+        System.out.println("Drop check: packet.ts + span = " + (packet.timestamp + packet.span) + ", pointer = " + this.pointerTimestamp);
         if (packet.timestamp + packet.span <= this.pointerTimestamp) {
             if (this.interpRequested == 0) {
                 this.interpRequested = packet.span;
@@ -208,7 +210,12 @@ public class JitterBuffer {
             // Interpolation Logic, do PLC outside of the decoder, in the playback layer
             if (this.interpRequested != 0) {
                 packet.timestamp = this.pointerTimestamp;
-                this.pointerTimestamp += this.interpRequested;
+                if (this.lostCount < 3) {
+                    this.pointerTimestamp += this.delayStep;
+                } else {
+                    System.out.println("Pointer advance paused due to too many consecutive losses.");
+                    // Maybe even skip this tick or interpolate for a longer span
+                }
                 packet.len = 0;
                 this.interpRequested = 0;
                 this.buffered = packet.span - this.delayStep;

@@ -12,7 +12,7 @@ public class JitterPacket {
     public JitterPacket() {
         this.data = new byte[0];
         this.timestamp = 0;
-        this.span = 960;
+        this.span = 20;
         this.sequence = 0;
         this.status = 0;
         this.userData = 0;
@@ -22,7 +22,7 @@ public class JitterPacket {
     public JitterPacket(byte[] data, int timestamp, int sequence, int status, int userData) {
         this.data = (data != null) ? data : new byte[0]; // default to empty array
         this.timestamp = timestamp;
-        this.span = 960;
+        this.span = 20;
         this.sequence = sequence;
         this.len = this.data.length;
         this.status = status;

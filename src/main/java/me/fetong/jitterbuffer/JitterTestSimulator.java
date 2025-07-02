@@ -17,12 +17,12 @@ public class JitterTestSimulator {
     private int totalDurationMs;
     private boolean reswapping;
     private boolean verbose;
-    private boolean playbackEnabled;
+    private boolean playBuffered;
     private short[] lastValidPCM;
 
     public JitterTestSimulator(SimulatedNetwork simulatedNetwork, JitterBuffer jitterBuffer, OpusTestEncoder encoder, 
                                 OpusTestDecoder decoder, AudioPlayer audioPlayer, int baseLatencyMs, int sendIntervalMs, int tickStepMs, 
-                                int totalDurationMs, boolean reswapping, boolean verbose, boolean playbackEnabled) throws IOException {
+                                int totalDurationMs, boolean reswapping, boolean verbose, boolean playBuffered) throws IOException {
         if (simulatedNetwork == null || jitterBuffer == null || decoder == null) {
             throw new IllegalArgumentException("Core simulation components must not be null");
         }
@@ -49,7 +49,7 @@ public class JitterTestSimulator {
         this.totalDurationMs = totalDurationMs;
         this.reswapping = reswapping;
         this.verbose = verbose;
-        this.playbackEnabled = playbackEnabled;
+        this.playBuffered = playBuffered;
         this.lastValidPCM = null;
     }
 
@@ -60,56 +60,60 @@ public class JitterTestSimulator {
         int packetIndex = 0;
         // Initialize debug statistic metrics
         int played = 0;
+
         int sent = 0;
         int lost = 0;
         int interpolated = 0;
         int deliveredPackets = 0;
         // Encode the audio
         List<JitterPacket> packets = this.encoder.encode();
-        while (currentTimeMs < this.totalDurationMs) {
-            // 0. Check Correct Timeframe
+        while (currentTimeMs < this.totalDurationMs) {            
+            // 1. Deliver packets from *previous* ticks first
+            List<JitterPacket> delivered = this.simulatedNetwork.deliverReadyPackets(currentTimeMs, this.reswapping);
+            // 2. Then send the current packet for future delivery
             if (currentTimeMs % this.sendIntervalMs == 0) {
-                // 1. Packet Generation
                 if (this.encoder != null && packetIndex < packets.size()) {
                     JitterPacket current = packets.get(packetIndex);
                     this.simulatedNetwork.submitPacket(current, currentTimeMs);
                     sent++;
                     packetIndex++;
                 }
-                else {
-                    // Synthetic Packet generation
+            }
+            if (!playBuffered) {
+                for (JitterPacket pkt : delivered) {
+                    short[] decoded = decoder.decode(pkt);
+                    this.audioPlayer.play(decoded);  // raw playback
                 }
             }
-            // 2. Packet delivery
-            List<JitterPacket> delivered = this.simulatedNetwork.deliverReadyPackets(currentTimeMs, this.reswapping);
-            for (int i = 0; i < delivered.size(); i++) {
-                this.jitterBuffer.put(delivered.get(i));
-                deliveredPackets++;
-            }
-            // 3. Playback Attempt
-            JitterPacket outPacket = new JitterPacket();
-            this.jitterBuffer.get(outPacket);
-            short[] decoded;
-            if (outPacket.status == 2) {
-                if (this.lastValidPCM != null) {
-                    decoded = applyAttenuation();
-                }
-                else {
-                    decoded = new short[960];
-                }
-                interpolated++;
-            } 
             else {
-                decoded = decoder.decode(outPacket);
-                if (outPacket.status == 1) {
-                    lost++;
+                for (int i = 0; i < delivered.size(); i++) {
+                    this.jitterBuffer.put(delivered.get(i));
+                    deliveredPackets++;
                 }
-            }
-            this.lastValidPCM = decoded;
-            if (this.playbackEnabled) {
-                // play audio
-                this.audioPlayer.play(decoded);
-                played++;
+                // 3. Playback Attempt
+                JitterPacket outPacket = new JitterPacket();
+                if (currentTimeMs >= 40) {
+                    this.jitterBuffer.get(outPacket);
+                    short[] decoded;
+                    if (outPacket.status == 2) {
+                        if (this.lastValidPCM != null) {
+                            decoded = applyAttenuation();
+                        }
+                        else {
+                            decoded = new short[960];
+                        }
+                        interpolated++;
+                    } 
+                    else {
+                        decoded = decoder.decode(outPacket);
+                        if (outPacket.status == 1) {
+                            lost++;
+                        }
+                    }
+                    this.lastValidPCM = decoded;
+                    this.audioPlayer.play(decoded);
+                    played++;
+                }
             }
             // 4. Advance Time
             currentTimeMs += this.tickStepMs;

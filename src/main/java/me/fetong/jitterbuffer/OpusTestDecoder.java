@@ -26,10 +26,10 @@ public class OpusTestDecoder {
             decoder.decode(packet.data, 0, packet.data.length, decoded, 0, 960, false);
         } else if (packet.status == 1) {
             // Packet loss concealment (PLC)
-            decoder.decode(null, 0, 0, decoded, 0, packet.span, false);
+            decoder.decode(null, 0, 0, decoded, 0, packet.span * 48, false);
         } else {
             // Interpolated: return silence
-            return new short[packet.span]; // silence
+            return new short[packet.span * 48]; // silence
         }
         return decoded;
     }

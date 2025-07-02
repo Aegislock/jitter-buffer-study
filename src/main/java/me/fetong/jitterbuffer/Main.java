@@ -21,13 +21,22 @@ public class Main {
 
         System.out.println("Audio duration: " + totalDurationMs + " ms");
 
+        System.out.println("Channels: " + format.getChannels());
+        if (format.getChannels() == 1) {
+            System.out.println("This WAV file is mono.");
+        } else if (format.getChannels() == 2) {
+            System.out.println("This WAV file is stereo.");
+        } else {
+            System.out.println("This WAV file has " + format.getChannels() + " channels.");
+        }
+
         int frameSize = 960;
 
         OpusTestEncoder encoder = new OpusTestEncoder(wavFile, frameSize);
         JitterBuffer buffer = new JitterBuffer(20); //
 
         SimulatedNetwork network = new SimulatedNetwork(
-            20, 10f, 0.00f, 0.15f
+            20, 10, 0.05f, 0.3f
         );
 
         OpusTestDecoder decoder = new OpusTestDecoder();
@@ -43,7 +52,7 @@ public class Main {
             20,    // send interval (ms)
             20,    // tick step (ms)
             totalDurationMs,  // <- match length of WAV file
-            false,
+            true,
             false,
             true
         );
