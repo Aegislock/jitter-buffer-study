@@ -17,7 +17,7 @@ public class OpusTestEncoder {
     public OpusTestEncoder(File file, int frameSize) throws OpusException {
         this.file = file;
         this.frameSize = frameSize;
-        this.encoder = new OpusEncoder(48000, 1, OpusApplication.OPUS_APPLICATION_VOIP);
+        this.encoder = new OpusEncoder(48000, 2, OpusApplication.OPUS_APPLICATION_VOIP);
     }
 
     public List<JitterPacket> encode() throws IOException, UnsupportedAudioFileException, OpusException {
@@ -27,7 +27,7 @@ public class OpusTestEncoder {
         return bufferInput;
     }
 
-    private List<JitterPacket> encodeAndPacketize(List<short[]> frames) throws IOException, UnsupportedAudioFileException, OpusException{
+    private List<JitterPacket> encodeAndPacketize(List<short[]> frames) throws IOException, UnsupportedAudioFileException, OpusException {
         List<JitterPacket> bufferInput = new ArrayList<>();
         for (int i = 0; i < frames.size(); i++) {
             // 1276 because of Opus frame size limit of 1275 + 1 frame for a table of contents / padding  
@@ -40,7 +40,7 @@ public class OpusTestEncoder {
             // There may be empty space at the end of encodedBuffer that is not filled
             // We use copyOf here to only copy useful information into encodedFrame
             byte[] encodedFrame = Arrays.copyOf(encodedBuffer, len);
-            JitterPacket packet = new JitterPacket(encodedFrame, i * frameSize, frameSize, i, 0, 0);
+            JitterPacket packet = new JitterPacket(encodedFrame, i * frameSize, i, 0, 0);
             bufferInput.add(packet);
         }
         return bufferInput;
@@ -83,14 +83,13 @@ public class OpusTestEncoder {
             short[] split = Arrays.copyOfRange(pcm, i, i + frameSize);
             splits.add(split);
         }
-        if (i != pcm.length) {
-            short[] lastSplit = new short[pcm.length - i];
-            int index = 0;
-            for (int j = i; j < pcm.length; j++) {
-                lastSplit[index] = pcm[j];
-                index++;
+        if (i < pcm.length) {
+            short[] padded = new short[frameSize]; // always 960
+            for (int j = 0; j < pcm.length - i; j++) {
+                padded[j] = pcm[i + j]; // copy remainder
             }
-            splits.add(lastSplit);
+            // rest remains zero (silence)
+            splits.add(padded);
         }
         return splits;
     }

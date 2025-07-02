@@ -40,7 +40,7 @@ public class JitterBuffer {
                 // Do nothing if the packet is fully in the past
                 // Don't need to free or destroy in Java
                 if (this.packets[i] != null && this.packets[i].data != null) {
-                    if (this.packets[i].timestamp + this.packets[i].span + this.delayStep <= this.pointerTimestamp) {
+                    if (this.packets[i].timestamp + this.packets[i].span <= this.pointerTimestamp) {
                         this.packets[i] = null;
                     }
                 }
@@ -110,7 +110,6 @@ public class JitterBuffer {
             }
             else {
                 packet.timestamp = 0;
-                packet.span = this.interpRequested;
                 packet.status = 1; // MISSING CODE
                 throw new Exception("No packet found in the jitter buffer. Invalid jitter buffer.");
             }
@@ -186,12 +185,11 @@ public class JitterBuffer {
             packet.len = this.packets[i].len;
             packet.timestamp = this.packets[i].timestamp;
             this.lastReturnedTimestamp = packet.timestamp;
-            packet.span = this.packets[i].span;
             packet.sequence = this.packets[i].sequence;
             packet.userData = this.packets[i].userData;
-            this.pointerTimestamp = this.packets[i].timestamp + this.packets[i].span;
-            this.pointerTimestamp = this.lastReturnedTimestamp;
-            this.buffered = packet.span - delayStep;
+            packet.span = this.packets[i].span;
+            this.pointerTimestamp = this.packets[i].timestamp + this.packets[i].span;            
+            this.buffered = packet.span - this.delayStep;
             //if (start_offset == -1) {
                 //this.buffered = start_offset;
             //}
@@ -200,7 +198,6 @@ public class JitterBuffer {
 
             this.lastValidPacket = new JitterPacket();
             this.lastValidPacket.data = Arrays.copyOf(packet.data, packet.data.length);
-            this.lastValidPacket.span = packet.span;
             this.lastValidPacket.timestamp = packet.timestamp;
         }
         // Missing Packet
@@ -211,7 +208,6 @@ public class JitterBuffer {
             // Interpolation Logic, do PLC outside of the decoder, in the playback layer
             if (this.interpRequested != 0) {
                 packet.timestamp = this.pointerTimestamp;
-                packet.span = this.interpRequested;
                 this.pointerTimestamp += this.interpRequested;
                 packet.len = 0;
                 this.interpRequested = 0;
@@ -224,7 +220,6 @@ public class JitterBuffer {
             else {
                 // No valid packet to repeat — fall back to silence
                 packet.data = new byte[0]; // or 0s
-                packet.span = this.delayStep;
                 packet.timestamp = this.pointerTimestamp;
                 this.pointerTimestamp += this.delayStep;
                 packet.status = 1;

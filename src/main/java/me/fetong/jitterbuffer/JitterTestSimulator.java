@@ -28,6 +28,7 @@ public class JitterTestSimulator {
         }
         this.simulatedNetwork = simulatedNetwork;
         this.jitterBuffer = jitterBuffer;
+        this.encoder = encoder;
         this.decoder = decoder;
         this.audioPlayer = audioPlayer;
         if (baseLatencyMs <= 0) {
@@ -89,14 +90,26 @@ public class JitterTestSimulator {
             JitterPacket outPacket = new JitterPacket();
             this.jitterBuffer.get(outPacket);
             short[] decoded;
-            if (outPacket.status == 2 && lastValidPCM != null) {
-                decoded = applyAttenuation();
-            } else {
+            if (outPacket.status == 2) {
+                if (this.lastValidPCM != null) {
+                    decoded = applyAttenuation();
+                }
+                else {
+                    decoded = new short[960];
+                }
+                interpolated++;
+            } 
+            else {
                 decoded = decoder.decode(outPacket);
+                if (outPacket.status == 1) {
+                    lost++;
+                }
             }
             this.lastValidPCM = decoded;
             if (this.playbackEnabled) {
                 // play audio
+                this.audioPlayer.play(decoded);
+                played++;
             }
             // 4. Advance Time
             currentTimeMs += this.tickStepMs;

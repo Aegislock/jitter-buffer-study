@@ -16,7 +16,7 @@ public class SimulatedNetwork {
         this.maxJitterMs = maxJitterMs;
         this.packetLossProbability = packetLossProbability;
         this.reorderProbability = reorderProbability;
-        this.packetQueue = new PriorityQueue<>(); // set comparator for the deliveryTime instance variable
+        this.packetQueue = new PriorityQueue<>(Comparator.comparingLong(p -> p.deliveryTime)); // set comparator for the deliveryTime instance variable
     }
 
     // Add a SimulatedPacket to the PQ
@@ -52,6 +52,9 @@ public class SimulatedNetwork {
                 if (!reswapping) {
                     i++;
                 }
+            }
+            if (i >= readyPackets.size()) {
+                break;
             }
             previous = readyPackets.get(i);
         }
